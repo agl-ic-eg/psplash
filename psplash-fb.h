@@ -1,5 +1,5 @@
-/* 
- *  pslash - a lightweight framebuffer splashscreen for embedded devices. 
+/*
+ *  pslash - a lightweight framebuffer splashscreen for embedded devices.
  *
  *  Copyright (c) 2006 Matthew Allum <mallum@o-hand.com>
  *
@@ -20,11 +20,11 @@ enum RGBMode {
 
 typedef struct PSplashFB
 {
-  int            fd;			
+  int            fd;
   struct fb_var_screeninfo fb_var;
-  struct termios save_termios;	        
-  int            type;		        
-  int            visual;		
+  struct termios save_termios;
+  int            type;
+  int            visual;
   int            width, height;
   int            bpp;
   int            stride;
@@ -56,20 +56,20 @@ PSplashFB*
 psplash_fb_new (int angle, int fbdev_id);
 
 void
-psplash_fb_draw_rect (PSplashFB    *fb, 
-		      int          x, 
-		      int          y, 
-		      int          width, 
+psplash_fb_draw_rect (PSplashFB    *fb,
+		      int          x,
+		      int          y,
+		      int          width,
 		      int          height,
 		      uint8        red,
 		      uint8        green,
 		      uint8        blue);
 
 void
-psplash_fb_draw_image (PSplashFB    *fb, 
-		       int          x, 
-		       int          y, 
-		       int          img_width, 
+psplash_fb_draw_image (PSplashFB    *fb,
+		       int          x,
+		       int          y,
+		       int          img_width,
 		       int          img_height,
 		       int          img_bytes_pre_pixel,
 		       int          img_rowstride,
@@ -82,9 +82,9 @@ psplash_fb_text_size (int                *width,
 		      const char         *text);
 
 void
-psplash_fb_draw_text (PSplashFB         *fb, 
-		      int                x, 
-		      int                y, 
+psplash_fb_draw_text (PSplashFB         *fb,
+		      int                x,
+		      int                y,
 		      uint8              red,
 		      uint8              green,
 		      uint8              blue,

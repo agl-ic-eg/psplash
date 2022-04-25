@@ -429,13 +429,13 @@ psplash_fb_plot_pixel (PSplashFB    *fb,
       {
       case 32:
         *(volatile uint32_t *) (fb->bdata + off)
-	  = ((red >> (8 - fb->red_length)) << fb->red_offset) 
+	  = ((red >> (8 - fb->red_length)) << fb->red_offset)
 	      | ((green >> (8 - fb->green_length)) << fb->green_offset)
 	      | ((blue >> (8 - fb->blue_length)) << fb->blue_offset);
         break;
       case 16:
         *(volatile uint16_t *) (fb->bdata + off)
-	  = ((red >> (8 - fb->red_length)) << fb->red_offset) 
+	  = ((red >> (8 - fb->red_length)) << fb->red_offset)
 	      | ((green >> (8 - fb->green_length)) << fb->green_offset)
 	      | ((blue >> (8 - fb->blue_length)) << fb->blue_offset);
         break;
