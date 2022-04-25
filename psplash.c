@@ -264,7 +264,10 @@ main (int argc, char** argv)
   if (!rundir)
     rundir = "/run";
 
-  chdir(rundir);
+  if (chdir(rundir)) {
+    perror("chdir");
+    exit(-1);
+  }
 
   if (mkfifo(PSPLASH_FIFO, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP))
     {

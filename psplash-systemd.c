@@ -32,6 +32,7 @@ int get_progress(void)
 	int r;
 	char buffer[20];
 	int len;
+	ssize_t written;
 
         /* Connect to the system bus */
 	r = sd_bus_new(&bus);
@@ -71,11 +72,36 @@ int get_progress(void)
 		current_progress = progress;
 
 	len = snprintf(buffer, 20, "PROGRESS %d", (int)(current_progress * 100));
-	write(pipe_fd, buffer, len + 1);
+	written = write(pipe_fd, buffer, len + 1);
+	if (written == -1) {
+		/* EPIPE could mean that psplash detected boot complete sooner
+		then psplash-systemd and exited */
+		if (errno != EPIPE) {
+			perror("write");
+			r = -1;
+			goto finish;
+		}
+	} else if (written < len + 1) {
+		fprintf(stderr, "Wrote %zd bytes, less then expected %d bytes\n",
+			written, len + 1);
+		r = -1;
+		goto finish;
+	}
 
 	if (progress == 1.0) {
 		printf("Systemd reported progress of 1.0, quit psplash.\n");
-		write(pipe_fd, "QUIT", 5);
+		written = write(pipe_fd, "QUIT", 5);
+		if (written == -1) {
+			/* EPIPE could mean that psplash detected boot complete
+			sooner then psplash-systemd and exited */
+			if (errno != EPIPE) {
+				perror("write");
+				r = -1;
+				goto finish;
+			}
+		} else if (written < 5)
+			fprintf(stderr, "Wrote %zd bytes, less then expected 5 bytes\n",
+				written);
 		r = -1;
 	}
 
@@ -123,7 +149,11 @@ int main()
 	if (!rundir)
 		rundir = "/run";
 
-	chdir(rundir);
+	r = chdir(rundir);
+	if (r < 0) {
+		perror("chdir");
+		goto finish;
+	}
 
 	if ((pipe_fd = open (PSPLASH_FIFO,O_WRONLY|O_NONBLOCK)) == -1) {
 		fprintf(stderr, "Error unable to open fifo");

@@ -21,8 +21,10 @@
 
 int main(int argc, char **argv)
 {
-  char *rundir;
-  int   pipe_fd;
+  char   *rundir;
+  int     pipe_fd;
+  size_t  count;
+  ssize_t written;
 
   rundir = getenv("PSPLASH_FIFO_DIR");
 
@@ -35,7 +37,10 @@ int main(int argc, char **argv)
       exit(-1);
     }
 
-  chdir(rundir);
+  if (chdir(rundir)) {
+    perror("chdir");
+    exit(-1);
+  }
 
   if ((pipe_fd = open (PSPLASH_FIFO,O_WRONLY|O_NONBLOCK)) == -1)
     {
@@ -45,8 +50,16 @@ int main(int argc, char **argv)
       exit (-1);
     }
 
-  write(pipe_fd, argv[1], strlen(argv[1])+1);
+  count = strlen(argv[1]) + 1;
+  written = write(pipe_fd, argv[1], count);
+  if (written == -1) {
+    perror("write");
+    exit(-1);
+  } else if ((size_t)written < count) {
+    fprintf(stderr, "Wrote %zd bytes, less then expected %zu bytes\n",
+      written, count);
+    exit(-1);
+  }
 
   return 0;
 }
-
