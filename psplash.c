@@ -100,7 +100,7 @@ psplash_draw_progress(PSplashCanvas *canvas, int value)
 #endif /* PSPLASH_SHOW_PROGRESS_BAR */
 
 static int
-parse_command (PSplashFB *fb, char *string)
+parse_command(PSplashCanvas *canvas, char *string)
 {
   char *command;
 
@@ -116,7 +116,7 @@ parse_command (PSplashFB *fb, char *string)
       char *arg = strtok(NULL, "\0");
 
       if (arg)
-        psplash_draw_msg(&fb->canvas, arg);
+        psplash_draw_msg(canvas, arg);
     }
  #ifdef PSPLASH_SHOW_PROGRESS_BAR
   else  if (!strcmp(command,"PROGRESS"))
@@ -124,7 +124,7 @@ parse_command (PSplashFB *fb, char *string)
       char *arg = strtok(NULL, "\0");
 
       if (arg)
-        psplash_draw_progress(&fb->canvas, atoi(arg));
+        psplash_draw_progress(canvas, atoi(arg));
     }
 #endif
   else if (!strcmp(command,"QUIT"))
@@ -132,12 +132,12 @@ parse_command (PSplashFB *fb, char *string)
       return 1;
     }
 
-  psplash_fb_flip(fb, 0);
+  canvas->flip(canvas, 0);
   return 0;
 }
 
 void
-psplash_main (PSplashFB *fb, int pipe_fd, int timeout)
+psplash_main(PSplashCanvas *canvas, int pipe_fd, int timeout)
 {
   int            err;
   ssize_t        length = 0;
@@ -200,7 +200,7 @@ psplash_main (PSplashFB *fb, int pipe_fd, int timeout)
 	    continue;
           }
 
-	if (parse_command(fb, cmd))
+	if (parse_command(canvas, cmd))
 	  return;
 
 	length -= cmdlen;
@@ -345,9 +345,9 @@ main (int argc, char** argv)
    * text and progress bar change which overwrite the specific areas with every
    * update.
    */
-  psplash_fb_flip(fb, 1);
+  canvas->flip(canvas, 1);
 
-  psplash_main (fb, pipe_fd, 0);
+  psplash_main(canvas, pipe_fd, 0);
 
   psplash_fb_destroy (fb);
 

@@ -36,6 +36,9 @@ typedef struct PSplashCanvas
   int            green_length;
   int            blue_offset;
   int            blue_length;
+
+  void          *priv;
+  void (*flip)(struct PSplashCanvas *canvas, int sync);
 }
 PSplashCanvas;
 

@@ -18,9 +18,10 @@ psplash_wait_for_vsync(PSplashFB *fb)
     fprintf(stderr, "Error, FB vsync ioctl [%d]\n", err);
 }
 
-void
-psplash_fb_flip(PSplashFB *fb, int sync)
+static void
+psplash_fb_flip(PSplashCanvas *canvas, int sync)
 {
+  PSplashFB *fb = canvas->priv;
   char *tmp;
 
   if (fb->double_buffering) {
@@ -154,7 +155,8 @@ psplash_fb_new (int angle, int fbdev_id)
     }
 
   memset (fb, 0, sizeof(PSplashFB));
-
+  fb->canvas.priv = fb;
+  fb->canvas.flip = psplash_fb_flip;
   fb->fd = -1;
 
   if ((fb->fd = open (fbdev, O_RDWR)) < 0)

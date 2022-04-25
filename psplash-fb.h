@@ -40,7 +40,4 @@ psplash_fb_destroy (PSplashFB *fb);
 PSplashFB*
 psplash_fb_new (int angle, int fbdev_id);
 
-void
-psplash_fb_flip(PSplashFB *fb, int sync);
-
 #endif
