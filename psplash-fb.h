@@ -22,7 +22,6 @@ typedef struct PSplashFB
 {
   int            fd;
   struct fb_var_screeninfo fb_var;
-  struct termios save_termios;
   int            type;
   int            visual;
   int            width, height;
