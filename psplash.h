@@ -15,7 +15,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <linux/fb.h>
 #include <linux/kd.h>
 #include <linux/vt.h>
 #include <signal.h>
@@ -78,7 +77,6 @@ typedef struct PSplashFont
 PSplashFont;
 
 
-#include "psplash-fb.h"
 #include "psplash-console.h"
 
 #endif

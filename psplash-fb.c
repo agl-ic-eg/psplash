@@ -8,7 +8,7 @@
  */
 
 #include <endian.h>
-#include "psplash.h"
+#include "psplash-fb.h"
 
 static void
 psplash_wait_for_vsync(PSplashFB *fb)

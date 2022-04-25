@@ -11,6 +11,7 @@
  */
 
 #include "psplash.h"
+#include "psplash-fb.h"
 #include "psplash-config.h"
 #include "psplash-colors.h"
 #include "psplash-poky-img.h"
