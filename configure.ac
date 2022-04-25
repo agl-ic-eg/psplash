@@ -12,6 +12,15 @@ if test "x$GCC" = "xyes"; then
         GCC_FLAGS="-g -Wall -Wextra"
 fi
 
+AC_ARG_ENABLE(drm,
+    AS_HELP_STRING([--enable-drm], [enable drm backend (default is 'no')]))
+
+AS_IF([test "x$enable_drm" = "xyes"], [
+    PKG_CHECK_MODULES(LIBDRM, libdrm)
+])
+
+AM_CONDITIONAL([ENABLE_DRM], [test "x$enable_drm" = "xyes"])
+
 AC_ARG_WITH([systemd], AS_HELP_STRING([--with-systemd], [Build with systemd
 	     support]))
 

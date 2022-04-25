@@ -26,10 +26,8 @@
  * provided by some external library.
  */
 
-#define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,6 +37,7 @@
 #include <unistd.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
+#include "psplash-drm.h"
 
 struct modeset_dev;
 static int modeset_find_crtc(int fd, drmModeRes *res, drmModeConnector *conn,
@@ -48,8 +47,6 @@ static int modeset_setup_dev(int fd, drmModeRes *res, drmModeConnector *conn,
 			     struct modeset_dev *dev);
 static int modeset_open(int *out, const char *node);
 static int modeset_prepare(int fd);
-static void modeset_draw(void);
-static void modeset_cleanup(int fd);
 
 /*
  * When the linux kernel detects a graphics-card on your machine, it loads the
@@ -153,7 +150,7 @@ struct modeset_dev {
 	uint32_t stride;
 	uint32_t size;
 	uint32_t handle;
-	uint8_t *map;
+	void *map;
 
 	drmModeModeInfo mode;
 	uint32_t fb;
@@ -187,7 +184,7 @@ static int modeset_prepare(int fd)
 {
 	drmModeRes *res;
 	drmModeConnector *conn;
-	unsigned int i;
+	int i;
 	struct modeset_dev *dev;
 	int ret;
 
@@ -338,11 +335,10 @@ static int modeset_find_crtc(int fd, drmModeRes *res, drmModeConnector *conn,
 			     struct modeset_dev *dev)
 {
 	drmModeEncoder *enc;
-	unsigned int i, j;
-	int32_t crtc;
+	int i, j, crtc;
 	struct modeset_dev *iter;
 
-	/* first try the currently conected encoder+crtc */
+	/* first try the currently connected encoder+crtc */
 	if (conn->encoder_id)
 		enc = drmModeGetEncoder(fd, conn->encoder_id);
 	else
@@ -352,7 +348,7 @@ static int modeset_find_crtc(int fd, drmModeRes *res, drmModeConnector *conn,
 		if (enc->crtc_id) {
 			crtc = enc->crtc_id;
 			for (iter = modeset_list; iter; iter = iter->next) {
-				if (iter->crtc == crtc) {
+				if (iter->crtc == (uint32_t)crtc) {
 					crtc = -1;
 					break;
 				}
@@ -389,7 +385,7 @@ static int modeset_find_crtc(int fd, drmModeRes *res, drmModeConnector *conn,
 			/* check that no other device already uses this CRTC */
 			crtc = res->crtcs[j];
 			for (iter = modeset_list; iter; iter = iter->next) {
-				if (iter->crtc == crtc) {
+				if (iter->crtc == (uint32_t)crtc) {
 					crtc = -1;
 					break;
 				}
@@ -503,6 +499,12 @@ err_destroy:
 	return ret;
 }
 
+static void psplash_drm_flip(PSplashCanvas *canvas, int sync)
+{
+	(void)canvas;
+	(void)sync;
+}
+
 /*
  * Finally! We have a connector with a suitable CRTC. We know which mode we want
  * to use and we have a framebuffer of the correct size that we can write to.
@@ -532,147 +534,81 @@ err_destroy:
  * also often not guaranteed. So instead, we only use one connector per CRTC.
  *
  * Before calling drmModeSetCrtc() we also save the current CRTC configuration.
- * This is used in modeset_cleanup() to restore the CRTC to the same mode as was
- * before we changed it.
+ * This is used in psplash_drm_destroy() to restore the CRTC to the same mode as
+ * was before we changed it.
  * If we don't do this, the screen will stay blank after we exit until another
  * application performs modesetting itself.
  */
 
-int main(int argc, char **argv)
+PSplashDRM* psplash_drm_new(int angle, int dev_id)
 {
-	int ret, fd;
-	const char *card;
+	PSplashDRM *drm = NULL;
+	int ret;
+	char card[] = "/dev/dri/card0";
 	struct modeset_dev *iter;
 
-	/* check which DRM device to open */
-	if (argc > 1)
-		card = argv[1];
-	else
-		card = "/dev/dri/card0";
+	if ((drm = malloc(sizeof(*drm))) == NULL) {
+		perror("malloc");
+		goto error;
+	}
+	drm->canvas.priv = drm;
+	drm->canvas.flip = psplash_drm_flip;
+
+	if (dev_id > 0 && dev_id < 10) {
+		// Conversion from integer to ascii.
+		card[13] = dev_id + 48;
+	}
 
 	fprintf(stderr, "using card '%s'\n", card);
 
 	/* open the DRM device */
-	ret = modeset_open(&fd, card);
+	ret = modeset_open(&drm->fd, card);
 	if (ret)
-		goto out_return;
+		goto error;
 
 	/* prepare all connectors and CRTCs */
-	ret = modeset_prepare(fd);
+	ret = modeset_prepare(drm->fd);
 	if (ret)
-		goto out_close;
+		goto error;
 
 	/* perform actual modesetting on each found connector+CRTC */
 	for (iter = modeset_list; iter; iter = iter->next) {
-		iter->saved_crtc = drmModeGetCrtc(fd, iter->crtc);
-		ret = drmModeSetCrtc(fd, iter->crtc, iter->fb, 0, 0,
+		iter->saved_crtc = drmModeGetCrtc(drm->fd, iter->crtc);
+		ret = drmModeSetCrtc(drm->fd, iter->crtc, iter->fb, 0, 0,
 				     &iter->conn, 1, &iter->mode);
 		if (ret)
 			fprintf(stderr, "cannot set CRTC for connector %u (%d): %m\n",
 				iter->conn, errno);
 	}
 
-	/* draw some colors for 5seconds */
-	modeset_draw();
+	drm->canvas.data = modeset_list->map;
+	drm->canvas.width = modeset_list->width;
+	drm->canvas.height = modeset_list->height;
+	drm->canvas.bpp = 32;
+	drm->canvas.stride = modeset_list->stride;
+	drm->canvas.angle = angle;
+	drm->canvas.rgbmode = RGB888;
 
-	/* cleanup everything */
-	modeset_cleanup(fd);
-
-	ret = 0;
-
-out_close:
-	close(fd);
-out_return:
-	if (ret) {
-		errno = -ret;
-		fprintf(stderr, "modeset failed with error %d: %m\n", errno);
-	} else {
-		fprintf(stderr, "exiting\n");
-	}
-	return ret;
+	return drm;
+error:
+	psplash_drm_destroy(drm);
+	return NULL;
 }
 
 /*
- * A short helper function to compute a changing color value. No need to
- * understand it.
- */
-
-static uint8_t next_color(bool *up, uint8_t cur, unsigned int mod)
-{
-	uint8_t next;
-
-	next = cur + (*up ? 1 : -1) * (rand() % mod);
-	if ((*up && next < cur) || (!*up && next > cur)) {
-		*up = !*up;
-		next = cur;
-	}
-
-	return next;
-}
-
-/*
- * modeset_draw(): This draws a solid color into all configured framebuffers.
- * Every 100ms the color changes to a slightly different color so we get some
- * kind of smoothly changing color-gradient.
- *
- * The color calculation can be ignored as it is pretty boring. So the
- * interesting stuff is iterating over "modeset_list" and then through all lines
- * and width. We then set each pixel individually to the current color.
- *
- * We do this 50 times as we sleep 100ms after each redraw round. This makes
- * 50*100ms = 5000ms = 5s so it takes about 5seconds to finish this loop.
- *
- * Please note that we draw directly into the framebuffer. This means that you
- * will see flickering as the monitor might refresh while we redraw the screen.
- * To avoid this you would need to use two framebuffers and a call to
- * drmModeSetCrtc() to switch between both buffers.
- * You can also use drmModePageFlip() to do a vsync'ed pageflip. But this is
- * beyond the scope of this document.
- */
-
-static void modeset_draw(void)
-{
-	uint8_t r, g, b;
-	bool r_up, g_up, b_up;
-	unsigned int i, j, k, off;
-	struct modeset_dev *iter;
-
-	srand(time(NULL));
-	r = rand() % 0xff;
-	g = rand() % 0xff;
-	b = rand() % 0xff;
-	r_up = g_up = b_up = true;
-
-	for (i = 0; i < 50; ++i) {
-		r = next_color(&r_up, r, 20);
-		g = next_color(&g_up, g, 10);
-		b = next_color(&b_up, b, 5);
-
-		for (iter = modeset_list; iter; iter = iter->next) {
-			for (j = 0; j < iter->height; ++j) {
-				for (k = 0; k < iter->width; ++k) {
-					off = iter->stride * j + k * 4;
-					*(uint32_t*)&iter->map[off] =
-						     (r << 16) | (g << 8) | b;
-				}
-			}
-		}
-
-		usleep(100000);
-	}
-}
-
-/*
- * modeset_cleanup(fd): This cleans up all the devices we created during
+ * psplash_drm_destroy(drm): This cleans up all the devices we created during
  * modeset_prepare(). It resets the CRTCs to their saved states and deallocates
  * all memory.
  * It should be pretty obvious how all of this works.
  */
 
-static void modeset_cleanup(int fd)
+void psplash_drm_destroy(PSplashDRM *drm)
 {
 	struct modeset_dev *iter;
 	struct drm_mode_destroy_dumb dreq;
+
+	if (!drm)
+		return;
 
 	while (modeset_list) {
 		/* remove from global list */
@@ -680,7 +616,7 @@ static void modeset_cleanup(int fd)
 		modeset_list = iter->next;
 
 		/* restore saved CRTC configuration */
-		drmModeSetCrtc(fd,
+		drmModeSetCrtc(drm->fd,
 			       iter->saved_crtc->crtc_id,
 			       iter->saved_crtc->buffer_id,
 			       iter->saved_crtc->x,
@@ -694,16 +630,19 @@ static void modeset_cleanup(int fd)
 		munmap(iter->map, iter->size);
 
 		/* delete framebuffer */
-		drmModeRmFB(fd, iter->fb);
+		drmModeRmFB(drm->fd, iter->fb);
 
 		/* delete dumb buffer */
 		memset(&dreq, 0, sizeof(dreq));
 		dreq.handle = iter->handle;
-		drmIoctl(fd, DRM_IOCTL_MODE_DESTROY_DUMB, &dreq);
+		drmIoctl(drm->fd, DRM_IOCTL_MODE_DESTROY_DUMB, &dreq);
 
 		/* free allocated memory */
 		free(iter);
 	}
+
+	close(drm->fd);
+	free(drm);
 }
 
 /*

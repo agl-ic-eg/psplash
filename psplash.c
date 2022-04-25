@@ -12,6 +12,9 @@
 
 #include "psplash.h"
 #include "psplash-fb.h"
+#ifdef ENABLE_DRM
+#include "psplash-drm.h"
+#endif
 #include "psplash-config.h"
 #include "psplash-colors.h"
 #include "psplash-poky-img.h"
@@ -224,8 +227,11 @@ int
 main (int argc, char** argv)
 {
   char      *rundir;
-  int        pipe_fd, i = 0, angle = 0, fbdev_id = 0, ret = 0;
-  PSplashFB *fb;
+  int        pipe_fd, i = 0, angle = 0, dev_id = 0, use_drm = 0, ret = 0;
+  PSplashFB *fb = NULL;
+#ifdef ENABLE_DRM
+  PSplashDRM *drm = NULL;
+#endif
   PSplashCanvas *canvas;
   bool       disable_console_switch = FALSE;
 
@@ -247,16 +253,24 @@ main (int argc, char** argv)
         continue;
       }
 
-    if (!strcmp(argv[i],"-f") || !strcmp(argv[i],"--fbdev"))
+    if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--fbdev") ||
+        !strcmp(argv[i], "-d") || !strcmp(argv[i], "--dev"))
       {
         if (++i >= argc) goto fail;
-        fbdev_id = atoi(argv[i]);
+        dev_id = atoi(argv[i]);
         continue;
       }
 
+#ifdef ENABLE_DRM
+    if (!strcmp(argv[i], "--drm")) {
+        use_drm = 1;
+        continue;
+    }
+#endif
+
     fail:
       fprintf(stderr,
-              "Usage: %s [-n|--no-console-switch][-a|--angle <0|90|180|270>][-f|--fbdev <0..9>]\n",
+              "Usage: %s [-n|--no-console-switch][-a|--angle <0|90|180|270>][-f|--fbdev|-d|--dev <0..9>][--drm]\n",
               argv[0]);
       exit(-1);
   }
@@ -291,12 +305,21 @@ main (int argc, char** argv)
   if (!disable_console_switch)
     psplash_console_switch ();
 
-  if ((fb = psplash_fb_new(angle,fbdev_id)) == NULL)
-    {
-	  ret = -1;
-	  goto fb_fail;
+  if (use_drm) {
+#ifdef ENABLE_DRM
+    if ((drm = psplash_drm_new(angle, dev_id)) == NULL) {
+      ret = -1;
+      goto error;
     }
-  canvas = &fb->canvas;
+    canvas = &drm->canvas;
+#endif
+  } else {
+    if ((fb = psplash_fb_new(angle, dev_id)) == NULL) {
+      ret = -1;
+      goto error;
+    }
+    canvas = &fb->canvas;
+  }
 
 #ifdef HAVE_SYSTEMD
   sd_notify(0, "READY=1");
@@ -349,9 +372,14 @@ main (int argc, char** argv)
 
   psplash_main(canvas, pipe_fd, 0);
 
-  psplash_fb_destroy (fb);
+  if (fb)
+    psplash_fb_destroy(fb);
+#ifdef ENABLE_DRM
+  if (drm)
+    psplash_drm_destroy(drm);
+#endif
 
- fb_fail:
+ error:
   unlink(PSPLASH_FIFO);
 
   if (!disable_console_switch)

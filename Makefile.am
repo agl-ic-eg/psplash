@@ -8,12 +8,20 @@ psplash_SOURCES = psplash.c psplash.h psplash-fb.c psplash-fb.h \
 		  psplash-poky-img.h psplash-bar-img.h $(FONT_NAME)-font.h \
 		  psplash-draw.c psplash-draw.h
 BUILT_SOURCES = psplash-poky-img.h psplash-bar-img.h
+psplash_CPPFLAGS =
+psplash_LDFLAGS =
 
 psplash_write_SOURCES = psplash-write.c psplash.h
 
+if ENABLE_DRM
+psplash_SOURCES += psplash-drm.c psplash-drm.h
+psplash_CPPFLAGS += $(LIBDRM_CFLAGS) -DENABLE_DRM
+psplash_LDFLAGS += $(LIBDRM_LIBS)
+endif
+
 if HAVE_SYSTEMD
-psplash_CPPFLAGS = $(SYSTEMD_CFLAGS) -DHAVE_SYSTEMD
-psplash_LDFLAGS= $(SYSTEMD_LIBS)
+psplash_CPPFLAGS += $(SYSTEMD_CFLAGS) -DHAVE_SYSTEMD
+psplash_LDFLAGS += $(SYSTEMD_LIBS)
 bin_PROGRAMS += psplash-systemd
 psplash_systemd_CPPFLAGS = $(SYSTEMD_CFLAGS)
 psplash_systemd_LDFLAGS= $(SYSTEMD_LIBS)
