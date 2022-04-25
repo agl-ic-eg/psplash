@@ -39,6 +39,8 @@
 #include <xf86drmMode.h>
 #include "psplash-drm.h"
 
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+
 struct modeset_dev;
 static int modeset_find_crtc(int fd, drmModeRes *res, drmModeConnector *conn,
 			     struct modeset_dev *dev);
@@ -196,8 +198,10 @@ static int modeset_prepare(int fd)
 		return -errno;
 	}
 
-	/* iterate all connectors */
-	for (i = 0; i < res->count_connectors; ++i) {
+	/* ~iterate all connectors~ - Use first connector if present. It is
+	   optimization related workaround since psplash supports drawing splash
+	   screen on one scanout anyway. */
+	for (i = 0; i < MIN(res->count_connectors, 1); ++i) {
 		/* get information for each connector */
 		conn = drmModeGetConnector(fd, res->connectors[i]);
 		if (!conn) {
