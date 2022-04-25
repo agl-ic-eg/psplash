@@ -42,10 +42,11 @@ psplash_fb_flip(PSplashFB *fb, int sync)
     tmp = fb->fdata;
     fb->fdata = fb->bdata;
     fb->bdata = tmp;
+    fb->canvas.data = fb->bdata;
 
     /* Sync new front to new back when requested */
     if (sync) {
-      memcpy(fb->bdata, fb->fdata, fb->stride * fb->real_height);
+      memcpy(fb->bdata, fb->fdata, fb->canvas.stride * fb->real_height);
     }
   }
 }
@@ -220,42 +221,42 @@ psplash_fb_new (int angle, int fbdev_id)
     }
   }
 
-  fb->real_width  = fb->width  = fb_var.xres;
-  fb->real_height = fb->height = fb_var.yres;
-  fb->bpp    = fb_var.bits_per_pixel;
-  fb->stride = fb_fix.line_length;
+  fb->real_width  = fb->canvas.width  = fb_var.xres;
+  fb->real_height = fb->canvas.height = fb_var.yres;
+  fb->canvas.bpp    = fb_var.bits_per_pixel;
+  fb->canvas.stride = fb_fix.line_length;
   fb->type   = fb_fix.type;
   fb->visual = fb_fix.visual;
 
-  fb->red_offset = fb_var.red.offset;
-  fb->red_length = fb_var.red.length;
-  fb->green_offset = fb_var.green.offset;
-  fb->green_length = fb_var.green.length;
-  fb->blue_offset = fb_var.blue.offset;
-  fb->blue_length = fb_var.blue.length;
+  fb->canvas.red_offset = fb_var.red.offset;
+  fb->canvas.red_length = fb_var.red.length;
+  fb->canvas.green_offset = fb_var.green.offset;
+  fb->canvas.green_length = fb_var.green.length;
+  fb->canvas.blue_offset = fb_var.blue.offset;
+  fb->canvas.blue_length = fb_var.blue.length;
 
-  if (fb->red_offset == 11 && fb->red_length == 5 &&
-      fb->green_offset == 5 && fb->green_length == 6 &&
-      fb->blue_offset == 0 && fb->blue_length == 5) {
-         fb->rgbmode = RGB565;
-  } else if (fb->red_offset == 0 && fb->red_length == 5 &&
-      fb->green_offset == 5 && fb->green_length == 6 &&
-      fb->blue_offset == 11 && fb->blue_length == 5) {
-         fb->rgbmode = BGR565;
-  } else if (fb->red_offset == 16 && fb->red_length == 8 &&
-      fb->green_offset == 8 && fb->green_length == 8 &&
-      fb->blue_offset == 0 && fb->blue_length == 8) {
-         fb->rgbmode = RGB888;
-  } else if (fb->red_offset == 0 && fb->red_length == 8 &&
-      fb->green_offset == 8 && fb->green_length == 8 &&
-      fb->blue_offset == 16 && fb->blue_length == 8) {
-         fb->rgbmode = BGR888;
+  if (fb->canvas.red_offset == 11 && fb->canvas.red_length == 5 &&
+      fb->canvas.green_offset == 5 && fb->canvas.green_length == 6 &&
+      fb->canvas.blue_offset == 0 && fb->canvas.blue_length == 5) {
+         fb->canvas.rgbmode = RGB565;
+  } else if (fb->canvas.red_offset == 0 && fb->canvas.red_length == 5 &&
+      fb->canvas.green_offset == 5 && fb->canvas.green_length == 6 &&
+      fb->canvas.blue_offset == 11 && fb->canvas.blue_length == 5) {
+         fb->canvas.rgbmode = BGR565;
+  } else if (fb->canvas.red_offset == 16 && fb->canvas.red_length == 8 &&
+      fb->canvas.green_offset == 8 && fb->canvas.green_length == 8 &&
+      fb->canvas.blue_offset == 0 && fb->canvas.blue_length == 8) {
+         fb->canvas.rgbmode = RGB888;
+  } else if (fb->canvas.red_offset == 0 && fb->canvas.red_length == 8 &&
+      fb->canvas.green_offset == 8 && fb->canvas.green_length == 8 &&
+      fb->canvas.blue_offset == 16 && fb->canvas.blue_length == 8) {
+         fb->canvas.rgbmode = BGR888;
   } else {
-         fb->rgbmode = GENERIC;
+         fb->canvas.rgbmode = GENERIC;
   }
 
   DBG("width: %i, height: %i, bpp: %i, stride: %i",
-      fb->width, fb->height, fb->bpp, fb->stride);
+      fb->canvas.width, fb->canvas.height, fb->canvas.bpp, fb->canvas.stride);
 
   fb->base = (char *) mmap ((caddr_t) NULL,
 			    fb_fix.smem_len,
@@ -279,16 +280,17 @@ psplash_fb_new (int angle, int fbdev_id)
     if (fb->fb_var.yoffset == 0) {
       printf("to back\n");
       fb->fdata = fb->data;
-      fb->bdata = fb->data + fb->stride * fb->height;
+      fb->bdata = fb->data + fb->canvas.stride * fb->canvas.height;
     } else {
       printf("to front\n");
-      fb->fdata = fb->data + fb->stride * fb->height;
+      fb->fdata = fb->data + fb->canvas.stride * fb->canvas.height;
       fb->bdata = fb->data;
     }
   } else {
     fb->fdata = fb->data;
     fb->bdata = fb->data;
   }
+  fb->canvas.data = fb->bdata;
 
 #if 0
   /* FIXME: No support for 8pp as yet  */
@@ -312,14 +314,14 @@ psplash_fb_new (int angle, int fbdev_id)
   status = 2;
 #endif
 
-  fb->angle = angle;
+  fb->canvas.angle = angle;
 
-  switch (fb->angle)
+  switch (angle)
     {
     case 270:
     case 90:
-      fb->width  = fb->real_height;
-      fb->height = fb->real_width;
+      fb->canvas.width  = fb->real_height;
+      fb->canvas.height = fb->real_width;
       break;
     case 180:
     case 0:
@@ -337,115 +339,6 @@ psplash_fb_new (int angle, int fbdev_id)
   return NULL;
 }
 
-#define OFFSET(fb,x,y) (((y) * (fb)->stride) + ((x) * ((fb)->bpp >> 3)))
-
-static inline void
-psplash_fb_plot_pixel (PSplashFB    *fb,
-		       int          x,
-		       int          y,
-		       uint8        red,
-		       uint8        green,
-		       uint8        blue)
-{
-  /* Always write to back data (bdata) which points to the right data with or
-   * without double buffering support */
-  int off;
-
-  if (x < 0 || x > fb->width-1 || y < 0 || y > fb->height-1)
-    return;
-
-  switch (fb->angle)
-    {
-    case 270:
-      off = OFFSET (fb, fb->height - y - 1, x);
-      break;
-    case 180:
-      off = OFFSET (fb, fb->width - x - 1, fb->height - y - 1);
-      break;
-    case 90:
-      off = OFFSET (fb, y, fb->width - x - 1);
-      break;
-    case 0:
-    default:
-      off = OFFSET (fb, x, y);
-      break;
-    }
-
-  if (fb->rgbmode == RGB565 || fb->rgbmode == RGB888) {
-    switch (fb->bpp)
-      {
-      case 24:
-#if __BYTE_ORDER == __BIG_ENDIAN
-        *(fb->bdata + off + 0) = red;
-        *(fb->bdata + off + 1) = green;
-        *(fb->bdata + off + 2) = blue;
-#else
-        *(fb->bdata + off + 0) = blue;
-        *(fb->bdata + off + 1) = green;
-        *(fb->bdata + off + 2) = red;
-#endif
-        break;
-      case 32:
-        *(volatile uint32_t *) (fb->bdata + off)
-          = (red << 16) | (green << 8) | (blue);
-        break;
-
-      case 16:
-        *(volatile uint16_t *) (fb->bdata + off)
-	  = ((red >> 3) << 11) | ((green >> 2) << 5) | (blue >> 3);
-        break;
-      default:
-        /* depth not supported yet */
-        break;
-      }
-  } else if (fb->rgbmode == BGR565 || fb->rgbmode == BGR888) {
-    switch (fb->bpp)
-      {
-      case 24:
-#if __BYTE_ORDER == __BIG_ENDIAN
-        *(fb->bdata + off + 0) = blue;
-        *(fb->bdata + off + 1) = green;
-        *(fb->bdata + off + 2) = red;
-#else
-        *(fb->bdata + off + 0) = red;
-        *(fb->bdata + off + 1) = green;
-        *(fb->bdata + off + 2) = blue;
-#endif
-        break;
-      case 32:
-        *(volatile uint32_t *) (fb->bdata + off)
-          = (blue << 16) | (green << 8) | (red);
-        break;
-      case 16:
-        *(volatile uint16_t *) (fb->bdata + off)
-	  = ((blue >> 3) << 11) | ((green >> 2) << 5) | (red >> 3);
-        break;
-      default:
-        /* depth not supported yet */
-        break;
-      }
-  } else {
-    switch (fb->bpp)
-      {
-      case 32:
-        *(volatile uint32_t *) (fb->bdata + off)
-	  = ((red >> (8 - fb->red_length)) << fb->red_offset)
-	      | ((green >> (8 - fb->green_length)) << fb->green_offset)
-	      | ((blue >> (8 - fb->blue_length)) << fb->blue_offset);
-        break;
-      case 16:
-        *(volatile uint16_t *) (fb->bdata + off)
-	  = ((red >> (8 - fb->red_length)) << fb->red_offset)
-	      | ((green >> (8 - fb->green_length)) << fb->green_offset)
-	      | ((blue >> (8 - fb->blue_length)) << fb->blue_offset);
-        break;
-      default:
-        /* depth not supported yet */
-        break;
-      }
-  }
-}
-
 void
 psplash_fb_draw_rect (PSplashFB    *fb,
 		      int          x,
@@ -460,7 +353,7 @@ psplash_fb_draw_rect (PSplashFB    *fb,
 
   for (dy=0; dy < height; dy++)
     for (dx=0; dx < width; dx++)
-	psplash_fb_plot_pixel (fb, x+dx, y+dy, red, green, blue);
+	psplash_plot_pixel(&fb->canvas, x+dx, y+dy, red, green, blue);
 }
 
 void
@@ -493,7 +386,7 @@ psplash_fb_draw_image (PSplashFB    *fb,
 	  do
 	    {
 	      if ((img_bytes_per_pixel < 4 || *(p+3)) && dx < img_width)
-	        psplash_fb_plot_pixel (fb, x+dx, y+dy, *(p), *(p+1), *(p+2));
+	        psplash_plot_pixel(&fb->canvas, x+dx, y+dy, *(p), *(p+1), *(p+2));
 	      if (++dx * img_bytes_per_pixel >= img_rowstride) { dx=0; dy++; }
 	    }
 	  while (--len);
@@ -507,7 +400,7 @@ psplash_fb_draw_image (PSplashFB    *fb,
 	  do
 	    {
 	      if ((img_bytes_per_pixel < 4 || *(p+3)) && dx < img_width)
-	        psplash_fb_plot_pixel (fb, x+dx, y+dy, *(p), *(p+1), *(p+2));
+	        psplash_plot_pixel(&fb->canvas, x+dx, y+dy, *(p), *(p+1), *(p+2));
 	      if (++dx * img_bytes_per_pixel >= img_rowstride) { dx=0; dy++; }
 	      p += img_bytes_per_pixel;
 	    }
@@ -613,7 +506,7 @@ psplash_fb_draw_text (PSplashFB         *fb,
 	  for (cx = 0; cx < w; cx++)
 	    {
 	      if (g & 0x80000000)
-		psplash_fb_plot_pixel (fb, x+dx+cx, y+dy+cy,
+		psplash_plot_pixel(&fb->canvas, x+dx+cx, y+dy+cy,
 				       red, green, blue);
 	      g <<= 1;
 	    }

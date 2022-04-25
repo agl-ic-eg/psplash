@@ -11,25 +11,16 @@
 #define _HAVE_PSPLASH_FB_H
 
 #include <linux/fb.h>
-#include "psplash.h"
-
-enum RGBMode {
-    RGB565,
-    BGR565,
-    RGB888,
-    BGR888,
-    GENERIC,
-};
+#include "psplash-draw.h"
 
 typedef struct PSplashFB
 {
+  PSplashCanvas  canvas;
+
   int            fd;
   struct fb_var_screeninfo fb_var;
   int            type;
   int            visual;
-  int            width, height;
-  int            bpp;
-  int            stride;
   char		*data;
   char		*base;
 
@@ -38,16 +29,8 @@ typedef struct PSplashFB
   char		*bdata;
   char		*fdata;
 
-  int            angle, fbdev_id;
+  int            fbdev_id;
   int            real_width, real_height;
-
-  enum RGBMode   rgbmode;
-  int            red_offset;
-  int            red_length;
-  int            green_offset;
-  int            green_length;
-  int            blue_offset;
-  int            blue_length;
 }
 PSplashFB;
 

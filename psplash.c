@@ -22,10 +22,10 @@
 #include FONT_HEADER
 
 #define SPLIT_LINE_POS(fb)                                  \
-	(  (fb)->height                                     \
+	(  (fb)->canvas.height                              \
 	 - ((  PSPLASH_IMG_SPLIT_DENOMINATOR                \
 	     - PSPLASH_IMG_SPLIT_NUMERATOR)                 \
-	    * (fb)->height / PSPLASH_IMG_SPLIT_DENOMINATOR) \
+	    * (fb)->canvas.height / PSPLASH_IMG_SPLIT_DENOMINATOR) \
 	)
 
 void
@@ -50,12 +50,12 @@ psplash_draw_msg (PSplashFB *fb, const char *msg)
   psplash_fb_draw_rect (fb,
 			0,
 			SPLIT_LINE_POS(fb) - h,
-			fb->width,
+			fb->canvas.width,
 			h,
 			PSPLASH_BACKGROUND_COLOR);
 
   psplash_fb_draw_text (fb,
-			(fb->width-w)/2,
+			(fb->canvas.width-w)/2,
 			SPLIT_LINE_POS(fb) - h,
 			PSPLASH_TEXT_COLOR,
 			&FONT_DEF,
@@ -69,7 +69,7 @@ psplash_draw_progress (PSplashFB *fb, int value)
   int x, y, width, height, barwidth;
 
   /* 4 pix border */
-  x      = ((fb->width  - BAR_IMG_WIDTH)/2) + 4 ;
+  x      = ((fb->canvas.width  - BAR_IMG_WIDTH)/2) + 4 ;
   y      = SPLIT_LINE_POS(fb) + 4;
   width  = BAR_IMG_WIDTH - 8;
   height = BAR_IMG_HEIGHT - 8;
@@ -301,16 +301,16 @@ main (int argc, char** argv)
 #endif
 
   /* Clear the background with #ecece1 */
-  psplash_fb_draw_rect (fb, 0, 0, fb->width, fb->height,
+  psplash_fb_draw_rect (fb, 0, 0, fb->canvas.width, fb->canvas.height,
                         PSPLASH_BACKGROUND_COLOR);
 
   /* Draw the Poky logo  */
   psplash_fb_draw_image (fb,
-			 (fb->width  - POKY_IMG_WIDTH)/2,
+			 (fb->canvas.width  - POKY_IMG_WIDTH)/2,
 #if PSPLASH_IMG_FULLSCREEN
-			 (fb->height - POKY_IMG_HEIGHT)/2,
+			 (fb->canvas.height - POKY_IMG_HEIGHT)/2,
 #else
-			 (fb->height * PSPLASH_IMG_SPLIT_NUMERATOR
+			 (fb->canvas.height * PSPLASH_IMG_SPLIT_NUMERATOR
 			  / PSPLASH_IMG_SPLIT_DENOMINATOR - POKY_IMG_HEIGHT)/2,
 #endif
 			 POKY_IMG_WIDTH,
@@ -322,7 +322,7 @@ main (int argc, char** argv)
 #ifdef PSPLASH_SHOW_PROGRESS_BAR
   /* Draw progress bar border */
   psplash_fb_draw_image (fb,
-			 (fb->width  - BAR_IMG_WIDTH)/2,
+			 (fb->canvas.width  - BAR_IMG_WIDTH)/2,
 			 SPLIT_LINE_POS(fb),
 			 BAR_IMG_WIDTH,
 			 BAR_IMG_HEIGHT,
