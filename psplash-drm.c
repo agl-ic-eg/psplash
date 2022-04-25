@@ -185,7 +185,7 @@ static int modeset_prepare(int fd)
 	drmModeRes *res;
 	drmModeConnector *conn;
 	int i;
-	struct modeset_dev *dev;
+	struct modeset_dev *dev, *last_dev = NULL;
 	int ret;
 
 	/* retrieve resources */
@@ -226,8 +226,13 @@ static int modeset_prepare(int fd)
 
 		/* free connector data and link device into global list */
 		drmModeFreeConnector(conn);
-		dev->next = modeset_list;
-		modeset_list = dev;
+		if (last_dev == NULL) {
+			modeset_list = dev;
+			last_dev = dev;
+		} else {
+			last_dev->next = dev;
+			last_dev = dev;
+		}
 	}
 
 	/* free resources again */
