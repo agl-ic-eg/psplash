@@ -11,8 +11,7 @@
 
 #define OFFSET(canvas, x, y) (((y) * (canvas)->stride) + ((x) * ((canvas)->bpp >> 3)))
 
-/* TODO: change to 'static inline' as psplash_fb_plot_pixel was before */
-void
+static inline void
 psplash_plot_pixel(PSplashCanvas *canvas,
 		   int            x,
 		   int            y,
@@ -186,5 +185,111 @@ psplash_draw_image(PSplashCanvas *canvas,
 	    }
 	  while (--len && (p - rle_data) < total_len);
 	}
+    }
+}
+
+/* Font rendering code based on BOGL by Ben Pfaff */
+
+static int
+psplash_font_glyph (const PSplashFont *font, wchar_t wc, u_int32_t **bitmap)
+{
+  int mask = font->index_mask;
+  int i;
+
+  for (;;)
+    {
+      for (i = font->offset[wc & mask]; font->index[i]; i += 2)
+	{
+	  if ((wchar_t)(font->index[i] & ~mask) == (wc & ~mask))
+	    {
+	      if (bitmap != NULL)
+		*bitmap = &font->content[font->index[i+1]];
+	      return font->index[i] & mask;
+	    }
+	}
+    }
+  return 0;
+}
+
+void
+psplash_text_size(int                *width,
+		  int                *height,
+		  const PSplashFont  *font,
+		  const char         *text)
+{
+  char   *c = (char*)text;
+  wchar_t wc;
+  int     k, n, w, h, mw;
+
+  n = strlen (text);
+  mw = h = w = 0;
+
+  mbtowc (0, 0, 0);
+  for (; (k = mbtowc (&wc, c, n)) > 0; c += k, n -= k)
+    {
+      if (*c == '\n')
+	{
+	  if (w > mw)
+	    mw = w;
+	  w = 0;
+	  h += font->height;
+	  continue;
+	}
+
+      w += psplash_font_glyph (font, wc, NULL);
+    }
+
+  *width  = (w > mw) ? w : mw;
+  *height = (h == 0) ? font->height : h;
+}
+
+void
+psplash_draw_text(PSplashCanvas     *canvas,
+		  int                x,
+		  int                y,
+		  uint8              red,
+		  uint8              green,
+		  uint8              blue,
+		  const PSplashFont *font,
+		  const char        *text)
+{
+  int     h, w, k, n, cx, cy, dx, dy;
+  char   *c = (char*)text;
+  wchar_t wc;
+
+  n = strlen (text);
+  h = font->height;
+  dx = dy = 0;
+
+  mbtowc (0, 0, 0);
+  for (; (k = mbtowc (&wc, c, n)) > 0; c += k, n -= k)
+    {
+      u_int32_t *glyph = NULL;
+
+      if (*c == '\n')
+	{
+	  dy += h;
+	  dx  = 0;
+	  continue;
+	}
+
+      w = psplash_font_glyph (font, wc, &glyph);
+
+      if (glyph == NULL)
+	continue;
+
+      for (cy = 0; cy < h; cy++)
+	{
+	  u_int32_t g = *glyph++;
+
+	  for (cx = 0; cx < w; cx++)
+	    {
+	      if (g & 0x80000000)
+		psplash_plot_pixel(canvas, x+dx+cx, y+dy+cy, red, green, blue);
+	      g <<= 1;
+	    }
+	}
+
+      dx += w;
     }
 }

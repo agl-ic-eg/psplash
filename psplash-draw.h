@@ -39,15 +39,6 @@ typedef struct PSplashCanvas
 }
 PSplashCanvas;
 
-/* TODO: Remove after rest of drawing functions migrated to psplash-draw.c */
-void
-psplash_plot_pixel(PSplashCanvas *canvas,
-		   int            x,
-		   int            y,
-		   uint8          red,
-		   uint8          green,
-		   uint8          blue);
-
 void
 psplash_draw_rect(PSplashCanvas *canvas,
 		  int            x,
@@ -67,5 +58,21 @@ psplash_draw_image(PSplashCanvas *canvas,
 		   int            img_bytes_per_pixel,
 		   int            img_rowstride,
 		   uint8         *rle_data);
+
+void
+psplash_text_size(int                *width,
+		  int                *height,
+		  const PSplashFont  *font,
+		  const char         *text);
+
+void
+psplash_draw_text(PSplashCanvas     *canvas,
+		  int                x,
+		  int                y,
+		  uint8              red,
+		  uint8              green,
+		  uint8              blue,
+		  const PSplashFont *font,
+		  const char        *text);
 
 #endif

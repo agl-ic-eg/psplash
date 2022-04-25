@@ -41,7 +41,7 @@ psplash_draw_msg (PSplashFB *fb, const char *msg)
 {
   int w, h;
 
-  psplash_fb_text_size (&w, &h, &FONT_DEF, msg);
+  psplash_text_size(&w, &h, &FONT_DEF, msg);
 
   DBG("displaying '%s' %ix%i\n", msg, w, h);
 
@@ -54,7 +54,7 @@ psplash_draw_msg (PSplashFB *fb, const char *msg)
 			h,
 			PSPLASH_BACKGROUND_COLOR);
 
-  psplash_fb_draw_text (fb,
+  psplash_draw_text(&fb->canvas,
 			(fb->canvas.width-w)/2,
 			SPLIT_LINE_POS(fb) - h,
 			PSPLASH_TEXT_COLOR,
