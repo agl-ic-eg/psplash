@@ -118,3 +118,73 @@ psplash_plot_pixel(PSplashCanvas *canvas,
       }
   }
 }
+
+void
+psplash_draw_rect(PSplashCanvas *canvas,
+		  int            x,
+		  int            y,
+		  int            width,
+		  int            height,
+		  uint8          red,
+		  uint8          green,
+		  uint8          blue)
+{
+  int dx, dy;
+
+  for (dy=0; dy < height; dy++)
+    for (dx=0; dx < width; dx++)
+	psplash_plot_pixel(canvas, x+dx, y+dy, red, green, blue);
+}
+
+void
+psplash_draw_image(PSplashCanvas *canvas,
+		   int            x,
+		   int            y,
+		   int            img_width,
+		   int            img_height,
+		   int            img_bytes_per_pixel,
+		   int            img_rowstride,
+		   uint8         *rle_data)
+{
+  uint8       *p = rle_data;
+  int          dx = 0, dy = 0,  total_len;
+  unsigned int len;
+
+  total_len = img_rowstride * img_height;
+
+  /* FIXME: Optimise, check for over runs ... */
+  while ((p - rle_data) < total_len)
+    {
+      len = *(p++);
+
+      if (len & 128)
+	{
+	  len -= 128;
+
+	  if (len == 0) break;
+
+	  do
+	    {
+	      if ((img_bytes_per_pixel < 4 || *(p+3)) && dx < img_width)
+	        psplash_plot_pixel(canvas, x+dx, y+dy, *(p), *(p+1), *(p+2));
+	      if (++dx * img_bytes_per_pixel >= img_rowstride) { dx=0; dy++; }
+	    }
+	  while (--len);
+
+	  p += img_bytes_per_pixel;
+	}
+      else
+	{
+	  if (len == 0) break;
+
+	  do
+	    {
+	      if ((img_bytes_per_pixel < 4 || *(p+3)) && dx < img_width)
+	        psplash_plot_pixel(canvas, x+dx, y+dy, *(p), *(p+1), *(p+2));
+	      if (++dx * img_bytes_per_pixel >= img_rowstride) { dx=0; dy++; }
+	      p += img_bytes_per_pixel;
+	    }
+	  while (--len && (p - rle_data) < total_len);
+	}
+    }
+}

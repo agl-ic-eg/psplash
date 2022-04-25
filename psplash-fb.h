@@ -41,26 +41,6 @@ PSplashFB*
 psplash_fb_new (int angle, int fbdev_id);
 
 void
-psplash_fb_draw_rect (PSplashFB    *fb,
-		      int          x,
-		      int          y,
-		      int          width,
-		      int          height,
-		      uint8        red,
-		      uint8        green,
-		      uint8        blue);
-
-void
-psplash_fb_draw_image (PSplashFB    *fb,
-		       int          x,
-		       int          y,
-		       int          img_width,
-		       int          img_height,
-		       int          img_bytes_pre_pixel,
-		       int          img_rowstride,
-		       uint8       *rle_data);
-
-void
 psplash_fb_text_size (int                *width,
 		      int                *height,
 		      const PSplashFont  *font,

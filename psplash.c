@@ -47,7 +47,7 @@ psplash_draw_msg (PSplashFB *fb, const char *msg)
 
   /* Clear */
 
-  psplash_fb_draw_rect (fb,
+  psplash_draw_rect(&fb->canvas,
 			0,
 			SPLIT_LINE_POS(fb) - h,
 			fb->canvas.width,
@@ -77,19 +77,19 @@ psplash_draw_progress (PSplashFB *fb, int value)
   if (value > 0)
     {
       barwidth = (CLAMP(value,0,100) * width) / 100;
-      psplash_fb_draw_rect (fb, x + barwidth, y,
+      psplash_draw_rect(&fb->canvas, x + barwidth, y,
     			width - barwidth, height,
 			PSPLASH_BAR_BACKGROUND_COLOR);
-      psplash_fb_draw_rect (fb, x, y, barwidth,
+      psplash_draw_rect(&fb->canvas, x, y, barwidth,
 			    height, PSPLASH_BAR_COLOR);
     }
   else
     {
       barwidth = (CLAMP(-value,0,100) * width) / 100;
-      psplash_fb_draw_rect (fb, x, y,
+      psplash_draw_rect(&fb->canvas, x, y,
     			width - barwidth, height,
 			PSPLASH_BAR_BACKGROUND_COLOR);
-      psplash_fb_draw_rect (fb, x + width - barwidth,
+      psplash_draw_rect(&fb->canvas, x + width - barwidth,
 			    y, barwidth, height,
 			    PSPLASH_BAR_COLOR);
     }
@@ -301,11 +301,11 @@ main (int argc, char** argv)
 #endif
 
   /* Clear the background with #ecece1 */
-  psplash_fb_draw_rect (fb, 0, 0, fb->canvas.width, fb->canvas.height,
+  psplash_draw_rect(&fb->canvas, 0, 0, fb->canvas.width, fb->canvas.height,
                         PSPLASH_BACKGROUND_COLOR);
 
   /* Draw the Poky logo  */
-  psplash_fb_draw_image (fb,
+  psplash_draw_image(&fb->canvas,
 			 (fb->canvas.width  - POKY_IMG_WIDTH)/2,
 #if PSPLASH_IMG_FULLSCREEN
 			 (fb->canvas.height - POKY_IMG_HEIGHT)/2,
@@ -321,7 +321,7 @@ main (int argc, char** argv)
 
 #ifdef PSPLASH_SHOW_PROGRESS_BAR
   /* Draw progress bar border */
-  psplash_fb_draw_image (fb,
+  psplash_draw_image(&fb->canvas,
 			 (fb->canvas.width  - BAR_IMG_WIDTH)/2,
 			 SPLIT_LINE_POS(fb),
 			 BAR_IMG_WIDTH,

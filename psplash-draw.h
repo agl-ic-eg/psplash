@@ -48,4 +48,24 @@ psplash_plot_pixel(PSplashCanvas *canvas,
 		   uint8          green,
 		   uint8          blue);
 
+void
+psplash_draw_rect(PSplashCanvas *canvas,
+		  int            x,
+		  int            y,
+		  int            width,
+		  int            height,
+		  uint8          red,
+		  uint8          green,
+		  uint8          blue);
+
+void
+psplash_draw_image(PSplashCanvas *canvas,
+		   int            x,
+		   int            y,
+		   int            img_width,
+		   int            img_height,
+		   int            img_bytes_per_pixel,
+		   int            img_rowstride,
+		   uint8         *rle_data);
+
 #endif
