@@ -34,10 +34,10 @@
 #include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 typedef uint8_t  uint8;
 typedef uint16_t uint16;
-typedef int            bool;
 
 #ifndef FALSE
 #define FALSE 0
