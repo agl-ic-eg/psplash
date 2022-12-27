@@ -39,6 +39,9 @@
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 #include "psplash-drm.h"
+#ifdef ENABLE_DRM_LEASE
+#include "psplash-drm-lease.h"
+#endif
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
@@ -52,6 +55,10 @@ static int modeset_setup_dev(int fd, drmModeRes *res, drmModeConnector *conn,
 			     struct modeset_dev *dev);
 static int modeset_open(int *out, const char *node);
 static int modeset_prepare(int fd);
+
+#ifdef ENABLE_DRM_LEASE
+char *drm_lease_name;
+#endif
 
 /*
  * When the linux kernel detects a graphics-card on your machine, it loads the
@@ -662,6 +669,7 @@ PSplashDRM* psplash_drm_new(int angle, int dev_id)
 		perror("malloc");
 		goto error;
 	}
+	drm->fd = 0;
 	drm->canvas.priv = drm;
 	drm->canvas.flip = psplash_drm_flip;
 
@@ -670,12 +678,30 @@ PSplashDRM* psplash_drm_new(int angle, int dev_id)
 		card[13] = dev_id + 48;
 	}
 
-	fprintf(stderr, "using card '%s'\n", card);
+#ifdef ENABLE_DRM_LEASE
+	if (drm_lease_name) {
+		fprintf(stderr, "using drm lease '%s'\n", drm_lease_name);
+		struct dlm_lease *lease = dlm_get_lease(drm_lease_name);
+		if (lease) {
+			drm->fd = dlm_lease_fd(lease);
+			if (!drm->fd)
+				dlm_release_lease(lease);
+		}
+		if (!drm->fd) {
+			fprintf(stderr, "Could not get DRM lease %s\n", drm_lease_name);
+			goto error;
+		}
+	}
+#endif
 
-	/* open the DRM device */
-	ret = modeset_open(&drm->fd, card);
-	if (ret)
-		goto error;
+	if (!drm->fd) {
+		fprintf(stderr, "using card '%s'\n", card);
+
+		/* open the DRM device */
+		ret = modeset_open(&drm->fd, card);
+		if (ret)
+			goto error;
+	}
 
 	/* prepare all connectors and CRTCs */
 	ret = modeset_prepare(drm->fd);
@@ -757,6 +783,14 @@ void psplash_drm_destroy(PSplashDRM *drm)
 	close(drm->fd);
 	free(drm);
 }
+
+#ifdef ENABLE_DRM_LEASE
+void drm_set_lease_name (char *name) {
+	if (!name)
+		return;
+	drm_lease_name = strdup(name);
+}
+#endif
 
 /*
  * I hope this was a short but easy overview of the DRM modesetting API. The DRM

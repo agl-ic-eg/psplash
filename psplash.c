@@ -15,6 +15,9 @@
 #ifdef ENABLE_DRM
 #include "psplash-drm.h"
 #endif
+#ifdef ENABLE_DRM_LEASE
+#include "psplash-drm-lease.h"
+#endif
 #include "psplash-config.h"
 #include "psplash-colors.h"
 #include "psplash-poky-img.h"
@@ -266,6 +269,15 @@ main (int argc, char** argv)
         use_drm = 1;
         continue;
     }
+#endif
+#ifdef ENABLE_DRM_LEASE
+    if (!strcmp(argv[i],"--drm-lease"))
+      {
+        if (++i >= argc) goto fail;
+        drm_set_lease_name(argv[i]);
+        use_drm = 1;
+        continue;
+      }
 #endif
 
     fail:

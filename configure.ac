@@ -21,6 +21,15 @@ AS_IF([test "x$enable_drm" = "xyes"], [
 
 AM_CONDITIONAL([ENABLE_DRM], [test "x$enable_drm" = "xyes"])
 
+AC_ARG_ENABLE(drm-lease,
+    AS_HELP_STRING([--enable-drm-lease], [enable drm-lease (default is 'no')]))
+
+AS_IF([test "x$enable_drm_lease" = "xyes"], [
+    PKG_CHECK_MODULES(LIBDRM_LEASE, libdlmclient)
+])
+
+AM_CONDITIONAL([ENABLE_DRM_LEASE], [test "x$enable_drm_lease" = "xyes"])
+
 AC_ARG_WITH([systemd], AS_HELP_STRING([--with-systemd], [Build with systemd
 	     support]))
 
