@@ -736,6 +736,23 @@ PSplashDRM* psplash_drm_new(int angle, int dev_id)
 	drm->canvas.angle = angle;
 	drm->canvas.rgbmode = RGB888;
 
+	/*
+	 * There seems some difference about handling portrait angle between
+	 * pure drm vs drm-lease. We'd use a method as same with psplash-fb
+	 * for drm-lease devices.
+	 */
+	if (drm_lease_name) {
+		switch (angle) {
+			case 270:
+			case 90:
+				drm->canvas.width  = modeset_list->height;
+				drm->canvas.height = modeset_list->width;
+				break;
+			default:
+				break;
+		}
+	}
+
 	return drm;
 error:
 	psplash_drm_destroy(drm);
